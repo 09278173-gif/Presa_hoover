@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador de Evaluación Avanzada: Presa Hoover</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --panel-bg: #1e1e24;
+            --text-color: #e2e2e9;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .main-container {
+            max-width: 1200px;
+            width: 100%;
+            display: none;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+        }
+
+        .welcome-screen {
+            max-width: 800px;
+            width: 100%;
+            background: var(--panel-bg);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #2d2d35;
+        }
+
+        .welcome-title {
+            color: #fff;
+            font-size: 2.5rem;
+            margin-top: 0;
+            border-bottom: 2px solid var(--accent-blue);
+            padding-bottom: 10px;
+        }
+
+        .meta-info {
+            background: #25252e;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-size: 0.95rem;
+            border-left: 4px solid var(--accent-green);
+        }
+
+        .importance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .importance-card {
+            background: #1a1a22;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #2a2a35;
+        }
+
+        .importance-card h4 { margin-top: 0; color: var(--accent-blue); }
+
+        .game-panel { display: flex; flex-direction: column; gap: 20px; }
+        .hud { display: flex; justify-content: space-around; background: var(--panel-bg); padding: 15px; border-radius: 8px; border-left: 5px solid var(--accent-blue); }
+        .hud-item { text-align: center; }
+        .hud-label { font-size: 0.8rem; color: #8a8a9e; text-transform: uppercase; }
+        .hud-value { font-size: 1.2rem; font-weight: bold; margin-top: 5px; }
+        
+        .crowe-box { display: flex; background: #252533; border-radius: 8px; padding: 15px; gap: 15px; align-items: center; border: 1px solid #36364a; }
+        .crowe-avatar { width: 60px; height: 60px; background: #3d3d5c; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid var(--accent-blue); color: #fff; flex-shrink: 0; font-size: 1.3rem; }
+        .crowe-speech { font-style: italic; color: #d1d1e0; line-height: 1.4; }
+        
+        .question-box { background: var(--panel-bg); padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .options-list { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        
+        .btn-option { background: #2c2c3b; color: white; border: 1px solid #44445c; padding: 14px 20px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 1rem; transition: all 0.2s; width: 100%; }
+        .btn-option:hover { background: var(--accent-blue); transform: translateX(5px); }
+        
+        .input-abierta { width: 100%; height: 100px; background: #13131c; color: #fff; border: 1px solid #44445c; border-radius: 6px; padding: 12px; box-sizing: border-box; font-family: inherit; font-size: 1rem; resize: none; }
+        .btn-submit { background: var(--accent-blue); color: #fff; font-weight: bold; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; margin-top: 10px; display: block; margin-left: auto; }
+        .btn-submit:hover { background: #2563eb; }
+
+        .visualizer-panel { background: var(--panel-bg); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .canvas-container { background: #111118; border-radius: 6px; overflow: hidden; border: 1px solid #333; }
+        canvas { display: block; width: 100%; height: auto; }
+        .log-box { background: #13131c; font-family: monospace; padding: 12px; border-radius: 6px; height: 150px; overflow-y: auto; color: #a3a3c2; font-size: 0.85rem; white-space: pre-line; border: 1px solid #222; }
+        
+        .btn-start { background: var(--accent-green); color: #000; font-weight: bold; font-size: 1.2rem; border: none; padding: 15px 30px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 15px; }
+        .btn-start:hover { background: #059669; }
+        .feedback-critica { background: #2a2a38; border-left: 4px solid var(--accent-blue); padding: 12px; border-radius: 4px; margin-top: 15px; font-size: 0.9rem; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+<!-- ================= PANTALLA DE INICIO ================= -->
+<div class="welcome-screen" id="pantalla-inicio">
+    <h1 class="welcome-title">Construcción de la Presa Hoover</h1>
+    
+    <div class="meta-info">
+        <strong>Superintendente General de Obra:</strong> Frank Crowe (Six Companies Inc.)<br>
+        <strong>Ubicación Geográfica:</strong> Cañón Negro del Río Colorado, frontera Nevada-Arizona, EE.UU.
+    </div>
+
+    <h3>Análisis de Impacto del Proyecto</h3>
+    <div class="importance-grid">
+        <div class="importance-card">
+            <h4>⚙️ Importancia Técnica</h4>
+            <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Desafío sin precedentes: requirió refrigeración artificial de concreto masivo, cablevías monumentales y tunelación simultánea en basalto.</p>
+        </div>
+        <div class="importance-card">
+            <h4>👥 Importancia Social</h4>
+            <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Dio empleo a miles en la Gran Depresión, fundó Boulder City y transformó el desarrollo urbano e hidroeléctrico del suroeste americano.</p>
+        </div>
+        <div class="importance-card">
+            <h4>🌱 Importancia Ambiental</h4>
+            <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Controló riadas catastróficas y creó el Lago Mead, alterando significativamente la dinámica ecológica del delta inferior.</p>
+        </div>
+    </div>
+
+    <p style="color: #a3a3c2; font-size: 0.95rem;"><em>Nota técnica: Avanzarás por las etapas constructivas. En cada una deberás superar un test del banco de preguntas teóricas para mantener el control técnico y mitigar riesgos ambientales antes de decidir el rumbo de la ingeniería.</em></p>
+
+    <button class="btn-start" onclick="comenzarSimulacion()">Iniciar Evaluación Dinámica</button>
+</div>
+
+<!-- ================= INTERFAZ DEL SIMULADOR ================= -->
+<div class="main-container" id="contenedor-simulador">
+    
+    <div class="game-panel">
+        <!-- HUD DINÁMICO -->
+        <div class="hud">
+            <div class="hud-item">
+                <div class="hud-label">Presupuesto Virtual</div>
+                <div class="hud-value" id="val-presupuesto" style="color: var(--accent-green);">$2,000,000</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">Fase del Proyecto</div>
+                <div class="hud-value" id="val-progreso">0 / 7</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">Termómetro del Cañón</div>
+                <div class="hud-value" id="val-temp">35°C</div>
+            </div>
+        </div>
+
+        <!-- DIÁLOGOS ÉPICOS DE FRANK CROWE -->
+        <div class="crowe-box">
+            <div class="crowe-avatar">FC</div>
+            <div>
+                <div style="font-weight:bold; color: var(--accent-blue); font-size:0.85rem; text-transform:uppercase;">Frank Crowe (Jefe de Obra)</div>
+                <div class="crowe-speech" id="crowe-texto">"¡A trabajar!"</div>
+            </div>
+        </div>
+
+        <!-- AREA DE TRABAJO DINÁMICA -->
+        <div class="question-box">
+            <h2 id="etapa-titulo" style="margin-top:0; font-size: 1.3rem; color: #fff;">Pregunta técnica</h2>
+            <p id="etapa-descripcion" style="color: #b0b0c5; line-height: 1.5; font-size: 1.1rem;"></p>
+            <div id="interfaz-respuesta"></div>
+            <div id="retroalimentacion-caja"></div>
+        </div>
+    </div>
+
+    <!-- CANVAS VISUAL LATERAL -->
+    <div class="visualizer-panel">
+        <h3 style="margin:0; text-transform: uppercase; font-size: 0.85rem; color: #8a8a9e;">Avance Esquemático</h3>
+        <div class="canvas-container">
+            <canvas id="simuladorCanvas" width="350" height="260"></canvas>
+        </div>
+        <h4 style="margin: 5px 0 0 0; font-size: 0.85rem;">Historial de Bitácora</h4>
+        <div class="log-box" id="log-texto"></div>
+    </div>
+</div>
+
+<script>
+    // --- ESTADO DEL SIMULADOR ---
+    const estado = {
+        nodoActual: "inicio",
+        dinero: 2000000,
+        seguridad: 100,
+        temperatura: 35,
+        multiplicadorRiesgo: 1.0,
+        fasesCompletadas: 0,
+        modoEvaluacion: true // true: Pregunta teórica, false: Decisión del árbol
+    };
+
+    // --- BANCO COMPLETO DE PREGUNTAS (ROTATIVO) ---
+    const bancoPreguntas = [
+        { id: 1, tipo: "multiple", q: "¿Cuál era el problema hidrológico principal del Río Colorado antes de la presa?", opciones: ["Su agua era demasiado salada para el consumo.", "Tenía caudales mínimos estables todo el año impidiendo la navegación.", "Sufría inundaciones extremas en primavera y sequías severas en verano.", "Presentaba temperaturas congelantes que destruían la fauna local."], ok: 2, exp: "El río pasaba de ser un torrente destructivo alimentado por el deshielo primaveral a un hilo de agua insuficiente en verano, arruinando la agricultura." },
+        { id: 2, tipo: "multiple", q: "¿Qué tipo de presa es estructuralmente la Represa Hoover?", opciones: ["Presa de tierra con núcleo de arcilla.", "Presa de gravedad de arco.", "Presa de contrafuertes de concreto.", "Presa de escollera con pantalla de asfalto."], ok: 1, exp: "Utiliza tanto su gran peso (gravedad) como su forma geométrica curva (arco) apoyada en las paredes del cañón para resistir el empuje de forma óptima." },
+        { id: 3, tipo: "multiple", q: "¿Cómo se resolvió el desvío del río para trabajar en seco?", opciones: ["Bombeando el agua con sistemas de tuberías superficiales.", "Congelando temporalmente el cauce del río.", "Excavando cuatro túneles masivos a través de las paredes del cañón.", "Abriendo canales abiertos paralelos en la llanura de Arizona."], ok: 2, exp: "Se perforaron cuatro túneles de 17 metros de diámetro en la roca para hacer pasar el río bordeando la zona de construcción." },
+        { id: 4, tipo: "multiple", q: "¿Qué fenómeno físico/químico obligó a diseñar la presa en bloques individuales enfriados artificialmente?", opciones: ["La contracción por congelamiento invernal.", "El calor de hidratación liberado por el fraguado del concreto.", "La reacción álcali-sílice del agregado grueso.", "La licuefacción del suelo de cimentación."], ok: 1, exp: "La liberación de calor exotérmico del cemento masivo habría provocado expansiones y grietas destructivas si no se enfriaba activamente." },
+        { id: 5, tipo: "multiple", q: "¿Qué estructura provisional se construye para evitar que el río regrese al sitio de excavación una vez desviado?", opciones: ["Una torre de toma.", "Una chimenea de equilibrio.", "Una ataguía (cofferdam).", "Un vertedero de demasías."], ok: 2, exp: "Las ataguías actúan como diques provisionales aguas arriba y aguas abajo que confinan la zona de la obra manteniéndola seca." },
+        { id: 6, tipo: "multiple", q: "¿Qué elemento de la represa se encarga de liberar los excesos de agua durante inundaciones extremas?", opciones: ["Los penstocks o tuberías de presión.", "Las torres de toma.", "Los aliviaderos o vertederos (spillways).", "Las turbinas francis."], ok: 2, exp: "Los spillways conducen caudales excedentes directamente hacia los túneles de desvío inferiores, protegiendo la corona de la presa." },
+        { id: 7, tipo: "multiple", q: "¿Cuál es el nombre del embalse artificial formado por la Represa Hoover?", opciones: ["Lago Powell.", "Lago Mead.", "Lago Havasu.", "Lago Mohave."], ok: 1, exp: "El almacenamiento de agua genera el Lago Mead, nombrado en honor al comisionado de reclamación Elwood Mead." },
+        { id: 8, tipo: "multiple", q: "¿Qué hito de infraestructura urbana fue indispensable construir antes de albergar a la fuerza laboral?", opciones: ["Las Vegas, Nevada.", "Phoenix, Arizona.", "Boulder City, Nevada.", "Yuma, Arizona."], ok: 2, exp: "Se fundó Boulder City como una ciudad planificada con servicios para mantener sana y disponible a la mano de obra en medio del desierto." },
+        { id: 9, tipo: "multiple", q: "¿Qué técnica se empleó para retirar los fragmentos de roca suelta peligrosa de las paredes del cañón?", opciones: ["Desbaste manual por obreros suspendidos llamados 'High Scalers'.", "Perforación hidráulica continua con agua a presión.", "Demolición automatizada con brazos mecánicos.", "Recubrimiento inmediato con concreto lanzado."], ok: 0, exp: "Los 'High Scalers' colgados de cables de acero limpiaban las paredes con barras de metal y dinamita." },
+        { id: 10, tipo: "multiple", q: "El Río Colorado era apodado históricamente como uno de los más peligrosos debido a que sus aguas transportaban un alto porcentaje de sedimentos y lodos.", opciones: ["Falso", "Verdadero"], ok: 1, exp: "El río arrastraba toneladas de limo fino que colmataban canales e infraestructura aguas abajo antes de su regulación." },
+        { id: 11, tipo: "vf", q: "La Represa Hoover fue cimentada directamente sobre las capas de lodo y grava del río para aprovechar la flexibilidad de los suelos finos.", opciones: ["Verdadero", "Falso"], ok: 1, exp: "Falso. Los ingenieros excavaron decenas de metros de sedimentos hasta anclarse firmemente en el lecho de roca firme (bedrock)." },
+        { id: 12, tipo: "vf", q: "Hasta el año 1949, la planta hidroeléctrica de la Represa Hoover se mantuvo como la instalación generadora de energía más grande del mundo.", opciones: ["Verdadero", "Falso"], ok: 0, exp: "Efectivamente, ostentó el récord mundial hasta que la represa Grand Coulee entró plenamente en operación." }
+    ];
+
+    // Preguntas seleccionadas al azar para esta partida
+    let preguntasPartida = [];
+
+    // --- ARBOL DE DECISIONES CONSECUENTES ---
+    const nodos = {
+        "inicio": {
+            titulo: "Fase I: Operación de Desvío",
+            descripcion: "El cauce del río Colorado inunda el área donde debemos levantar los bloques. Frank Crowe exige el plan de acción inmediato.",
+            get crowe() {
+                return estado.temperatura > 40 
+                    ? `«¡Maldición! El termómetro marca ${estado.temperatura}°C a la sombra en este desierto. El agua del Colorado va a hervir y Washington nos pisa los talones. ¡Perforen o nos hundimos!»`
+                    : "«Muchachos, el río Colorado no va a esperar por nosotros. Necesito un plan de desvío ayer mismo. ¿Qué proponen?»";
+            },
+            grafico: "rio_salvaje",
+            opciones: [
+                { texto: "Perforar los 4 túneles de desvío en las paredes de roca usando camiones Jumbo.", siguiente: "tunes_listos", efecto: { dinero: -500000, seguridad: 0, temp: 2, log: "-> Perforación autorizada. Avanzamos por las paredes del cañón." } },
+                { texto: "Arrojar roca y suelo suelto para levantar una ataguía rápida directa.", siguiente: "desastre_ataguia", efecto: { dinero: -400000, seguridad: -30, temp: 0, log: "-> ALERTA: La fuerza hidráulica destruyó el terraplén de tierra." } }
+            ]
+        },
+        "tunes_listos": {
+            titulo: "Fase II: Revestimiento Hidráulico",
+            descripcion: "Los túneles de desvío están listos en la roca viva, pero la velocidad del agua amenaza con generar desprendimientos internos destructivos.",
+            crowe: "«Buen trabajo con las excavaciones. Pero si dejamos esa roca desnuda, el río la erosionará en semanas y colapsará el proyecto entero. ¿Qué hacemos?»",
+            grafico: "rio_tuneles",
+            opciones: [
+                { texto: "Revestir los túneles con una capa protectora de concreto liso de 3 pies.", siguiente: "limpieza_cañon", efecto: { dinero: -400000, seguridad: +5, temp: 5, log: "-> Entrada de agua de túneles estabilizada. El lecho central queda expuesto." } },
+                { texto: "Saltarse el revestimiento de concreto para ahorrar fondos y desviar de inmediato.", siguiente: "colapso_tunes", efecto: { dinero: 0, seguridad: -50, temp: 0, log: "-> ERROR: Derrumbe masivo en el túnel lateral por erosión extrema." } }
+            ]
+        },
+        "desastre_ataguia": {
+            titulo: "Fase II-B: Control de Inundación",
+            descripcion: "La ataguía falló. La maquinaria pesada está anegada y los inversores de las 'Six Companies' pierden la confianza.",
+            crowe: "«¡Se los advertí! El Colorado no se doma con un puñado de tierra suelta. Saquen esas malditas excavadoras del lodo de inmediato.»",
+            grafico: "ataguia_rota",
+            opciones: [
+                { texto: "Aumentar jornadas a turnos de 24 horas pagando bonos de riesgo para abrir túneles rápidamente.", siguiente: "tunes_listos", efecto: { dinero: -700000, seguridad: -20, temp: 4, log: "-> Trabajo extremo bajo presión. Se logran abrir los túneles laterales." } },
+                { texto: "Suspender temporalmente las actividades y solicitar un rediseño gubernamental.", siguiente: "fin_quiebra", efecto: { dinero: 0, seguridad: 0, temp: 0, log: "-> Contrato revocado por retrasos intolerables." } }
+            ]
+        },
+        "limpieza_cañon": {
+            titulo: "Fase III: Desbaste de Roca Viva",
+            descripcion: "El lecho está seco, pero las paredes del Cañón Negro tienen toneladas de roca suelta que aplastarán los encofrados inferiores.",
+            crowe: "«No voy a enviar a mis hombres a morir aplastados por escombros sueltos. Necesito limpiar esas paredes verticales de basalto ahora mismo.»",
+            grafico: "lecho_seco",
+            opciones: [
+                { texto: "Contratar 'High Scalers' para desbastar manualmente suspendidos en cables con dinamita y barras.", siguiente: "logistica_cablevias", efecto: { dinero: -200000, seguridad: -15, temp: 1, log: "-> Los High Scalers limpian el cañón con un ritmo brutal y arriesgado." } },
+                { texto: "Utilizar agua a alta presión desde la corona del cañón para lavar y empujar la roca suelta.", siguiente: "desastre_deslave", efecto: { dinero: -100000, seguridad: -5, temp: -2, log: "-> ALERTA: El agua saturó las fracturas internas provocando un colapso de ladera." } }
+            ]
+        },
+        "desastre_deslave": {
+            titulo: "Fase III-B: Estabilización de Ladera",
+            descripcion: "El lavado a presión provocó un deslizamiento masivo que sepultó las líneas ferroviarias provisionales del fondo del cañón.",
+            crowe: "«¡Maldita sea! Les dije que esa roca estaba agrietada. Ahora tenemos mil toneladas de basalto bloqueando el paso.»",
+            grafico: "ataguia_rota",
+            opciones: [
+                { texto: "Desplegar cuadrillas de emergencia con palas mecánicas y dinamitar el derrumbe a paso acelerado.", siguiente: "logistica_cablevias", efecto: { dinero: -300000, seguridad: -10, temp: 3, log: "-> Escombros retirados. La ruta de transporte vuelve a operar a contrarreloj." } },
+                { texto: "Frenar la obra para realizar un estudio geológico completo de estabilidad de taludes.", siguiente: "fin_quiebra", efecto: { dinero: -100000, seguridad: +10, temp: 0, log: "-> Las penalizaciones diarias por retraso agotan los fondos comerciales." } }
+            ]
+        },
+        "logistica_cablevias": {
+            titulo: "Fase IV: Logística de Transporte Pesado",
+            descripcion: "El transporte terrestre por camiones es insuficiente para bajar los masivos baldes de concreto al fondo del cañón.",
+            crowe: "«Mover materiales por el fondo de este cañón es un cuello de botella. Si no agilizamos el transporte, el concreto se secará.»",
+            grafico: "lecho_seco",
+            opciones: [
+                { texto: "Instalar un sistema masivo de cablevías aéreas (cableways) que cruce el cañón de Nevada a Arizona.", siguiente: "vaciado_represa", efecto: { dinero: -350000, seguridad: +5, temp: 0, log: "-> Éxito: Los cableways bajan baldes de 20 toneladas por minuto de forma óptima." } },
+                { texto: "Construir rampas serpenteantes provisionales con pendientes pronunciadas para camiones pesados.", siguiente: "accidente_rampa", efecto: { dinero: -150000, seguridad: -35, temp: 2, log: "-> ALERTA: Los frenos de un camión fallaron en la rampa debido a la inclinación." } }
+            ]
+        },
+        "accidente_rampa": {
+            titulo: "Fase IV-B: Crisis en los Accesos",
+            descripcion: "El accidente en la rampa destruyó dos camiones mixer y paralizó el acceso principal de los trabajadores.",
+            crowe: "«¡Por los clavos de Cristo! Esas rampas son trampas mortales en verano. ¡O cambian la estrategia o detengo el vaciado!»",
+            grafico: "ataguia_rota",
+            opciones: [
+                { texto: "Clasificar las rampas solo para vehículos ligeros e instalar cablevías de alta capacidad con urgencia.", siguiente: "vaciado_represa", efecto: { dinero: -450000, seguridad: +20, temp: 1, log: "-> Logística reestructurada bajo estricta seguridad aérea." } },
+                { texto: "Reforzar los frenos de la flota existente y obligar a los choferes a bajar en marchas ultra cortas.", siguiente: "colapso_tunes", efecto: { dinero: -50000, seguridad: -40, temp: 4, log: "-> Tragedia masiva: El cansancio y calor causan un choque múltiple en la pendiente." } }
+            ]
+        },
+        "vaciado_represa": {
+            titulo: "Fase V: Vaciado Estructural y Calor",
+            descripcion: "Llegó el paso crítico: el vaciado masivo. Debido al calor de hidratación de la mezcla química, el núcleo de la presa puede trizarse por estrés térmico.",
+            get crowe() {
+                return estado.temperatura > 40 
+                    ? `«¡Maldición! El termómetro marca ${estado.temperatura}°C. El concreto va a hervir de forma interna si lo tiran de golpe. ¡Exijo enfriamiento artificial!»`
+                    : `«Estamos a ${estado.temperatura}°C. Clima manejable, pero no te confíes de la reacción exotérmica interna del cemento.»`;
+            },
+            grafico: "represa_creciendo",
+            get opciones() {
+                const dañoTermico = Math.round(30 * estado.multiplicadorRiesgo);
+                return [
+                    { texto: "Diseñar bloques modulares e inyectar agua helada mediante tuberías internas (Plan Crowe).", siguiente: "instalacion_penstocks", efecto: { dinero: -500000, seguridad: 10, temp: -25, log: "-> Enfriamiento exitoso. Estructura curada de manera uniforme sin fisuras." } },
+                    { texto: "Efectuar un vaciado monolítico continuo tradicional para ahorrar tiempos.", siguiente: estado.temperatura > 40 ? "fin_grietas" : "vaciado_con_microfisuras", efecto: { dinero: -200000, seguridad: -10, temp: dañoTermico, log: `-> Elevación térmica crítica de +${dañoTermico}°C en el bloque central.` } }
+                ];
+            }
+        },
+        "vaciado_con_microfisuras": {
+            titulo: "Fase V-B: Control de Daño Térmico",
+            descripcion: "El vaciado continuo funcionó rápido, pero inspecciones de ultrasonido muestran microfisuras internas que comprometen la impermeabilidad futura.",
+            crowe: "«Zafamos de un colapso inmediato, pero ese muro va a sudar agua a presión si no sellamos esas grietas.»",
+            grafico: "represa_rota",
+            opciones: [
+                { texto: "Ejecutar una campaña intensiva de inyección de lechada de cemento a alta presión (Grouting) en las juntas.", siguiente: "instalacion_penstocks", efecto: { dinero: -300000, seguridad: +10, temp: -5, log: "-> Microfisuras selladas con éxito. Estructura consolidada." } },
+                { texto: "Ignorar las microfisuras superficiales y confiar en que el peso propio de la presa sellará las juntas.", siguiente: "fin_grietas", efecto: { dinero: 0, seguridad: -30, temp: 10, log: "-> FATAL: Las microfisuras se expandieron bajo la presión hidrostática." } }
+            ]
+        },
+        "instalacion_penstocks": {
+            titulo: "Fase VI: Montaje de Tuberías de Presión",
+            descripcion: "Debemos instalar las masivas tuberías de acero de 9 metros de diámetro (Penstocks) que alimentarán las turbinas.",
+            crowe: "«Esos tubos de acero pesan más que una locomotora entera. Un solo error al soldarlos y la presión del agua reventará la casa de máquinas.»",
+            grafico: "represa_completa",
+            opciones: [
+                { texto: "Fabricar los tubos en una planta provisional en el sitio y bajarlos usando el cablevía de 150 toneladas.", siguiente: "sellado_grouting", efecto: { dinero: -400000, seguridad: +10, temp: 0, log: "-> Montaje milimétrico y soldaduras radiografiadas con éxito." } },
+                { texto: "Transportar los tubos prefabricados desde el este por tren y bajarlos arrastrándolos por el fondo del cañón.", siguiente: "accidente_penstock", efecto: { dinero: -200000, seguridad: -25, temp: 2, log: "-> ALERTA: Una sección de tubería se soltó del remolque, deformando su diámetro." } }
+            ]
+        },
+        "accidente_penstock": {
+            titulo: "Fase VI-B: Reparación Metalúrgica",
+            descripcion: "La sección dañada del tubo perdió su geometría cilíndrica. Instalarla así provocará turbulencias severas y cavitación destructiva.",
+            crowe: "«¡Brutos! Si metemos un tubo deformado ahí abajo, la presión hidráulica lo desgarrará como papel. Hay que solucionar esto ya.»",
+            grafico: "represa_rota",
+            opciones: [
+                { texto: "Descartar la sección dañada, pagar penalización y ordenar una fundición de emergencia en el sitio.", siguiente: "sellado_grouting", efecto: { dinero: -350000, seguridad: +15, temp: 0, log: "-> Reemplazo estructural aprobado. La calidad metalúrgica se mantiene al 100%." } },
+                { texto: "Enderezar el acero usando gatos hidráulicos y calor local con sopletes en campo.", siguiente: "fin_grietas", efecto: { dinero: -50000, seguridad: -20, temp: 5, log: "-> FATAL: El tratamiento térmico debilitó el acero. El tubo estalló en las pruebas hidráulicas." } }
+            ]
+        },
+        "sellado_grouting": {
+            titulo: "Fase VII: Inyección de Lechada de Cierre",
+            descripcion: "La estructura de arco-gravedad está terminada, pero la roca de los estribos es porosa y puede filtrar agua rodeando la presa.",
+            crowe: "«La represa es un tapón perfecto, pero de nada sirve si el agua se escapa por los lados a través de las montañas de Nevada y Arizona. ¡Sellen esa roca!»",
+            grafico: "represa_completa",
+            opciones: [
+                { texto: "Perforar cortinas de inyección profundas en los laterales e inyectar lechada de cemento a alta presión.", siguiente: "fin_victoria", efecto: { dinero: -300000, seguridad: +15, temp: -2, log: "-> Cortina de impermeabilización completada. El sellado estructural es absoluto." } },
+                { texto: "Confiar en la compresión natural que ejercerá el arco de la presa contra las paredes del cañón.", siguiente: "fin_victoria_ajustada", efecto: { dinero: 0, seguridad: -10, temp: 0, log: "-> Filtraciones menores detectadas en el estribo de Arizona. Requerirá mantenimiento continuo." } }
+            ]
+        },
+
+        // ESTADOS TERMINALES
+        "colapso_tunes": { titulo: "Fracaso Estructural", descripcion: "Los túneles colapsaron. El río destruyó el campamento base y anegó la obra de forma permanente.", crowe: "«El proyecto Hoover ha sido cancelado por fallas críticas de diseño e ingeniería básica. Recojan sus cosas.»", grafico: "ataguia_rota", opciones: [] },
+        "fin_quiebra": { titulo: "Quiebra Comercial", descripcion: "Te has quedado sin fondos operativos estatales de las 'Six Companies'.", crowe: "«El consorcio cerró la caja de pagos. Estás fuera de mi oficina.»", grafico: "rio_salvaje", opciones: [] },
+        "fin_grietas": { titulo: "Catástrofe de Ingeniería", descripcion: "La integridad estructural falló catastróficamente bajo la presión hidráulica del Lago Mead.", crowe: "«Construimos un monumento de cristal roto. El muro cedió ante el Colorado. Es un desastre absoluto.»", grafico: "represa_rota", opciones: [] },
+        "fin_victoria_ajustada": { titulo: "Victoria Ajustada", descripcion: "La represa se sostiene, pero las microfisuras térmicas y las filtraciones laterales requerirán reparaciones millonarias en el futuro.", crowe: "«Zafamos por poco, ingenieros. Controlamos el río, pero esto nos costará una fortuna en mantenimiento técnico en los próximos años.»", grafico: "represa_completa", opciones: [] },
+        "fin_victoria": { titulo: "¡Éxito de Ingeniería Civil!", descripcion: "La Presa Hoover se alza majestuosa en el Cañón Negro, lista para controlar el caudal y generar energía por siglos.", crowe: "«¡Brillante trabajo, ingenieros! Hicimos historia en este maldito desierto. Hemos domado al Colorado y construido un coloso indestructible.»", grafico: "represa_completa", opciones: [] }
+    };
+
+    // --- MOTOR DEL JUEGO ---
+    function comenzarSimulacion() {
+        document.getElementById("pantalla-inicio").style.display = "none";
+        document.getElementById("contenedor-simulador").style.display = "grid";
+        
+        // Barajar aleatoriamente 7 preguntas para la partida
+        preguntasPartida = bancoPreguntas.sort(() => 0.5 - Math.random()).slice(0, 7);
+        
+        estado.nodoActual = "inicio";
+        estado.dinero = 2000000;
+        estado.multiplicadorRiesgo = 1.0;
+        estado.temperatura = 35;
+        estado.fasesCompletadas = 0;
+        estado.modoEvaluacion = true; 
+        
+        document.getElementById("log-texto").innerText = "=== INICIO DE LA BITÁCORA DE OBRA ===\n";
+        actualizarPantalla();
+    }
+
+    function actualizarHUD() {
+        document.getElementById("val-presupuesto").innerText = `$${estado.dinero.toLocaleString()}`;
+        document.getElementById("val-progreso").innerText = `${estado.fasesCompletadas} / 7`;
+        document.getElementById("val-temp").innerText = `${estado.temperatura}°C`;
+        
+        if (estado.dinero <= 0 && !estado.nodoActual.startsWith("fin")) {
+            estado.nodoActual = "fin_quiebra";
+            estado.modoEvaluacion = false;
+        }
+    }
+
+    function actualizarPantalla() {
+        actualizarHUD();
+        const nodo = nodos[estado.nodoActual];
+        dibujarCanvas(nodo.grafico);
+
+        if (estado.nodoActual.startsWith("fin")) {
+            // Fin de la simulación
+            document.getElementById("etapa-titulo").innerText = nodo.titulo;
+            document.getElementById("etapa-descripcion").innerText = nodo.descripcion;
+            document.getElementById("crowe-texto").innerText = nodo.crowe;
+            document.getElementById("interfaz-respuesta").innerHTML = `
+                <button class="btn-start" onclick="comenzarSimulacion()" style="background:var(--accent-blue)">Volver a Intentar Simulador</button>
+            `;
+            document.getElementById("retroalimentacion-caja").innerHTML = "";
+            return;
+        }
+
+        if (estado.modoEvaluacion) {
+            // Mostrar pregunta del banco evaluativo
+            document.getElementById("etapa-titulo").innerText = `${nodo.titulo} - Control de Ingeniería`;
+            const indexPregunta = estado.fasesCompletadas % preguntasPartida.length;
+            const qObj = preguntasPartida[indexPregunta];
+            
+            document.getElementById("etapa-descripcion").innerText = `Antes de tomar la decisión de obra, verifique los parámetros teóricos:\n\n${qObj.q}`;
+            document.getElementById("crowe-texto").innerText = "«¡A ver si de verdad estudiaron ingeniería civil en la universidad o solo vienen a calentar el asiento! ¡Respondan rápido!»";
+
+            let htmlOptions = "<div class='options-list'>";
+            qObj.opciones.forEach((opc, idx) => {
+                htmlOptions += `<button class='btn-option' onclick='evaluarPregunta(${idx})'>${opc}</button>`;
+            });
+            htmlOptions += "</div>";
+            document.getElementById("interfaz-respuesta").innerHTML = htmlOptions;
+            document.getElementById("retroalimentacion-caja").innerHTML = "";
+        } else {
+            // Mostrar árbol de decisiones consecuente
+            document.getElementById("etapa-titulo").innerText = nodo.titulo;
+            document.getElementById("etapa-descripcion").innerText = nodo.descripcion;
+            document.getElementById("crowe-texto").innerText = typeof nodo.crowe === 'function' ? nodo.crowe : nodo.crowe;
+
+            let htmlOptions = "<div class='options-list'>";
+            nodo.opciones.forEach((opc, idx) => {
+                htmlOptions += `<button class='btn-option' onclick='tomarDecision(${idx})'>${opc.texto}</button>`;
+            });
+            htmlOptions += "</div>";
+            document.getElementById("interfaz-respuesta").innerHTML = htmlOptions;
+        }
+    }
+
+    function evaluarPregunta(seleccionado) {
+        const indexPregunta = estado.fasesCompletadas % preguntasPartida.length;
+        const qObj = preguntasPartida[indexPregunta];
+        const cajaFeedback = document.getElementById("retroalimentacion-caja");
+
+        if (seleccionado === qObj.ok) {
+            cajaFeedback.innerHTML = `
+                <div class="feedback-critica" style="border-left-color: var(--accent-green);">
+                    <strong style="color:var(--accent-green)">✓ Correcto:</strong> ${qObj.exp}
+                </div>
+                <button class="btn-submit" onclick="avanzarADecision()">Proceder con la Orden de Obra</button>
+            `;
+        } else {
+            // Penalización por fallo en marco conceptual
+            estado.temperatura += 4; // Sube la temperatura operativa por ineficiencia de control
+            estado.multiplicadorRiesgo += 0.3; // Multiplica daños futuros
+            cajaFeedback.innerHTML = `
+                <div class="feedback-critica" style="border-left-color: var(--accent-red);">
+                    <strong style="color:var(--accent-red)">✗ Incorrecto:</strong> El control técnico falló. ${qObj.exp}<br>
+                    <span style="color:#ffa3a3; font-size:0.85rem;">Efecto: Clima adverso e incremento en riesgo estructural.</span>
+                </div>
+                <button class="btn-submit" onclick="avanzarADecision()">Proceder bajo condiciones críticas</button>
+            `;
+        }
+        document.getElementById("interfaz-respuesta").innerHTML = ""; // Bloquea opciones
+    }
+
+    function avanzarADecision() {
+        estado.modoEvaluacion = false;
+        actualizarPantalla();
+    }
+
+    function tomarDecision(idxOpcion) {
+        const nodo = nodos[estado.nodoActual];
+        const opcion = nodo.opciones[idxOpcion];
+        
+        // Aplicar consecuencias físicas/financieras
+        estado.dinero += opcion.efecto.dinero;
+        estado.seguridad += opcion.efecto.seguridad;
+        estado.temperatura += opcion.efecto.temp;
+        
+        // Guardar logs en bitácora lateral
+        const logBox = document.getElementById("log-texto");
+        logBox.innerText += `[Fase ${estado.fasesCompletadas + 1}] ${opcion.efecto.log}\nBalance: $${opcion.efecto.dinero.toLocaleString()} | Temp: ${opcion.efecto.temp}°C\n\n`;
+        logBox.scrollTop = logBox.scrollHeight;
+
+        // Avanzar de nodo en el árbol
+        estado.nodoActual = opcion.siguiente;
+        estado.fasesCompletadas++;
+        
+        // Regresa al modo evaluación para la siguiente fase si no es un nodo de fin
+        if (!estado.nodoActual.startsWith("fin")) {
+            estado.modoEvaluacion = true;
+        }
+        
+        actualizarPantalla();
+    }
+
+    // --- RENDERIZADO DINÁMICO DEL CANVAS ---
+    function dibujarCanvas(tipoGrafico) {
+        const canvas = document.getElementById("simuladorCanvas");
+        const ctx = canvas.getContext("2d");
+        
+        // Limpiar pantalla
+        ctx.fillStyle = "#13131c";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Dibujar Paredes del Cañón (Basalto)
+        ctx.fillStyle = "#3a2f28";
+        ctx.beginPath();
+        ctx.moveTo(0, 0); ctx.lineTo(80, 260); ctx.lineTo(0, 260); ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(350, 0); ctx.lineTo(270, 260); ctx.lineTo(350, 260); ctx.closePath(); ctx.fill();
+
+        if (tipoGrafico === "rio_salvaje") {
+            // Río caudaloso inundando todo
+            ctx.fillStyle = "#1d4ed8";
+            ctx.fillRect(80, 180, 190, 80);
+            ctx.fillStyle = "#eff6ff"; // Espuma
+            ctx.fillRect(80, 175, 190, 5);
+        } 
+        else if (tipoGrafico === "rio_tuneles") {
+            // Túneles en la roca con agua fluyendo lateralmente
+            ctx.fillStyle = "#111";
+            ctx.fillRect(20, 100, 30, 40);
+            ctx.fillRect(300, 100, 30, 40);
+            ctx.fillStyle = "#2563eb";
+            ctx.fillRect(20, 120, 30, 20);
+            ctx.fillRect(300, 120, 30, 20);
+        } 
+        else if (tipoGrafico === "ataguia_rota") {
+            // Desastre de agua y lodo
+            ctx.fillStyle = "#78350f"; // Lodo
+            ctx.fillRect(80, 190, 190, 70);
+            ctx.fillStyle = "#1e40af";
+            ctx.fillRect(100, 160, 50, 40); // Agua rompiendo
+        } 
+        else if (tipoGrafico === "lecho_seco") {
+            // Fondo de excavación limpio listo para concreto
+            ctx.fillStyle = "#57534e";
+            ctx.fillRect(80, 220, 190, 40);
+        }
+        else if (tipoGrafico === "represa_creciendo") {
+            // Bloques de concreto elevándose a la mitad
+            ctx.fillStyle = "#57534e";
+            ctx.fillRect(80, 220, 190, 40);
+            ctx.fillStyle = "#a8a29e"; // Concreto Hoover
+            ctx.beginPath();
+            ctx.moveTo(100, 220); ctx.lineTo(120, 140); ctx.lineTo(230, 140); ctx.lineTo(250, 220);
+            ctx.closePath(); ctx.fill();
+        }
+        else if (tipoGrafico === "represa_completa") {
+            // Presa imponente terminada
+            ctx.fillStyle = "#a8a29e"; 
+            ctx.beginPath();
+            ctx.moveTo(90, 220); ctx.lineTo(140, 60); ctx.lineTo(210, 60); ctx.lineTo(260, 220);
+            ctx.closePath(); ctx.fill();
+            // Agua retenida arriba (Lago Mead)
+            ctx.fillStyle = "#1d4ed8";
+            ctx.fillRect(0, 60, 140, 200);
+            // Volver a pintar cañón por encima para superposición estética
+            ctx.fillStyle = "#3a2f28";
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(80, 260); ctx.lineTo(0, 260); ctx.closePath(); ctx.fill();
+        }
+        else if (tipoGrafico === "represa_rota") {
+            // Presa Hoover agrietada con líneas rojas de falla estructural
+            ctx.fillStyle = "#a8a29e"; 
+            ctx.beginPath();
+            ctx.moveTo(90, 220); ctx.lineTo(140, 60); ctx.lineTo(210, 60); ctx.lineTo(260, 220);
+            ctx.closePath(); ctx.fill();
+            // Grietas rojas intensas
+            ctx.strokeStyle = "#ef4444";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(150, 80); ctx.lineTo(170, 140); ctx.lineTo(160, 200);
+            ctx.moveTo(190, 100); ctx.lineTo(180, 170);
+            ctx.stroke();
+        }
+    }
+</script>
+</body>
+</html>
